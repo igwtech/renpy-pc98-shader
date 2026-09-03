@@ -65,7 +65,14 @@ def _wdist(a, b):
 SPRITE_WEIGHT = 4.0   # the character must read well: its pixels count 4x in the objective
 
 
-def palette_for(im, colors=16, sprite_mask=None):
+## Colours that must be in a palette (snapped to 4 bits): e.g. the two siren
+## colours of the police car, so the colour-cycling demo can swap them.
+FIXED = {
+    "street": [(255, 34, 34), (34, 85, 255)],
+}
+
+
+def palette_for(im, colors=16, sprite_mask=None, fixed=()):
     """16 colours that minimise the dithering needed to show `im`.
 
     Weighted k-means (Lloyd) over the 4-bit colour histogram of the scene:
@@ -87,8 +94,9 @@ def palette_for(im, colors=16, sprite_mask=None):
     cols = (np.stack([idx // 256, (idx // 16) % 16, idx % 16], axis=1) * 17).astype(np.float64)
     counts = counts[idx]
 
-    fixed_arr = np.array([(0, 0, 0)], dtype=np.float64)
-    k = colors - 1
+    fixed_list = [(0, 0, 0)] + [to_4bit(c) for c in fixed if to_4bit(c) != (0, 0, 0)]
+    fixed_arr = np.array(fixed_list, dtype=np.float64)
+    k = colors - len(fixed_list)
 
     # k-means++ style seeding: repeatedly take the colour with the largest weighted error
     centers = []
@@ -103,14 +111,14 @@ def palette_for(im, colors=16, sprite_mask=None):
         assign = _wdist(cols, allc).argmin(axis=1)
         new = centers.copy()
         for j in range(k):
-            m = assign == 1 + j
+            m = assign == len(fixed_list) + j
             if counts[m].sum() > 0:
                 new[j] = (cols[m] * counts[m, None]).sum(axis=0) / counts[m].sum()
         if np.allclose(new, centers):
             break
         centers = new
 
-    out = [(0, 0, 0)] + [to_4bit(tuple(int(round(v)) for v in c)) for c in centers]
+    out = fixed_list + [to_4bit(tuple(int(round(v)) for v in c)) for c in centers]
     seen, uniq = set(), []
     for c in out:
         if c not in seen:
@@ -172,7 +180,7 @@ def main():
     for path in sorted(glob.glob(os.path.join(IMAGES, "bg_*.webp"))):
         name = os.path.splitext(os.path.basename(path))[0][3:]
         im = Image.open(path).convert("RGB")
-        day = palette_for(im)
+        day = palette_for(im, fixed=FIXED.get(name, ()))
         print("%-16s rms %5.1f  flat(1 step) %4.1f%%  (2 steps) %4.1f%%" % ((name,) + _fmt(dither_stats(im, day))))
         entries.append((name, day))
         entries.append((name + "_night", [night_shift(c) for c in day]))

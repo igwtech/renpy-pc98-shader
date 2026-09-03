@@ -39,7 +39,7 @@ label poc_autotest:
             ("fade_mid", "bg cafe", False, pc98_fade_in(palette="cafe", duration=2.0), 0.9),
             ("night", "bg cafe", False, pc98(palette="cafe", display="cafe_night"), 0.4),
             ("lightning", "bg rooftop", False, pc98(palette="rooftop", display="rooftop_night", tint=(2.5, 2.5, 2.5)), 0.4),
-            ("cycle", "bg rooftop", False, pc98_cycle(palette="rooftop"), 0.4),
+            ("cycle", "bg street", False, pc98_cycle(palette="street", period=0.25, indices=pc98_siren("street")), 0.4),
             ("scanlines", "bg cafe", False, pc98(palette="cafe", scanline=0.6), 0.4),
             ("digital8", "bg sunset", False, pc98_digital8(), 0.4),
         ]
@@ -50,7 +50,7 @@ label poc_autotest:
 
         for _name, _bg, _sprite, _t, _settle in _shots:
             renpy.scene()
-            renpy.show(_bg)
+            renpy.show(_bg, at_list=[street_still] if _bg == "bg street" else [])
             if _sprite:
                 renpy.show("claire", at_list=[claire_stage])
             renpy.layer_at_list([_t] if _t is not None else [], "master")

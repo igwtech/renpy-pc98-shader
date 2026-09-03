@@ -17,6 +17,20 @@ image bg sunset = Transform("images/bg_sunset.webp", zoom=config.screen_height /
 image bg candles = Transform("images/bg_candles.webp", zoom=config.screen_height / 768.0, xalign=0.5)
 image bg rooftop = Transform("images/bg_rooftop.webp", zoom=config.screen_height / 768.0, xalign=0.5)
 
+## Portrait background (896x1200): zoom to the screen width and pan down to the car.
+image bg street = "images/bg_street.webp"
+
+transform street_pan:
+    zoom (config.screen_width / 896.0)
+    xalign 0.5
+    yalign 0.0
+    linear 9.0 yalign 0.70
+
+transform street_still:
+    zoom (config.screen_width / 896.0)
+    xalign 0.5
+    yalign 0.70
+
 ## Flat sprite, straight from the file.
 image claire = "images/claire.png"
 
@@ -172,8 +186,9 @@ label scene_registers:
     show layer master at pc98_lightning(palette="rooftop")
     narrator_c "{b}Lightning{/b}: night palette, then every register slams to white for a couple of frames and decays. u_post_tint on the output colour, no extra draw."
 
-    show layer master at pc98_cycle(palette="rooftop", period=0.12)
-    narrator_c "{b}Colour cycling{/b}: the two brightest registers swap every few frames, so the tower and city lights blink without any animated asset."
+    scene bg street at street_pan with dissolve
+    show layer master at pc98_cycle(palette="street", period=0.25, indices=pc98_siren("street"))
+    narrator_c "{b}Colour cycling{/b}: the red and blue palette registers swap every few frames, so the siren flashes without a single animated frame."
     jump hub
 
 

@@ -107,7 +107,7 @@ pixel keeping its colour index (no re-quantisation, no dither crawl):
 | Fade in / out | `PC98PaletteFade("black", "cafe", 2.0)` ramps `u_out*` |
 | Day -> night | `PC98PaletteFade("cafe", "cafe_night", 2.5)` (night palette derived register by register) |
 | Lightning | `u_post_tint (6.0, 6.0, 6.0)` for two frames, then `linear` back |
-| Blinking lights | `PC98ColorCycle("rooftop", 0.12)` swaps the brightest registers |
+| Police siren | `PC98ColorCycle("street", 0.25, indices=pc98_siren("street"))` swaps the red and blue registers |
 
 ### 5. One palette per scene, like the real thing
 

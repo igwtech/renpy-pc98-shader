@@ -43,11 +43,12 @@ init python:
         """Scene hold time: at least base, and long enough for the VO clip."""
         return max(base, _vo_durations.get(name, 0.0) + 1.5)
 
-    def vsay(name, txt, base):
-        """Show narration without waiting for a click, hold for the scene."""
+    def vsay(name, txt, base, extra=0.0):
+        """Show narration without waiting for a click, hold for the scene.
+        `extra` adds reading time after the voice-over (code cards)."""
         vcue(name)
         renpy.say(narrator_c, txt, interact=False)
-        renpy.pause(vdur(name, base), hard=True)
+        renpy.pause(vdur(name, base) + extra, hard=True)
 
     def vhold(name, base):
         """Cue + hold with no narration box (title / cards)."""
@@ -61,6 +62,11 @@ init python:
 
 
 image bg dark = Solid("#0b0b0e")
+
+## Transitions: unhurried, this is a slow-paced tech demo.
+define vfade = Dissolve(1.2)
+define vcard = Dissolve(1.0)
+define vtitle = Dissolve(1.8)
 
 ## --- Cards -----------------------------------------------------------------
 
@@ -138,17 +144,17 @@ label poc_video:
 
     ## Small black hold so the recording never misses the start.
     scene bg dark
-    $ renpy.pause(2.0, hard=True)
+    $ renpy.pause(2.5, hard=True)
 
     ## === 1. The magic of PC-98 visuals in modern engines =====================
 
-    show video_title at truecenter with dissolve
+    show video_title at truecenter with vtitle
     $ vhold("title", 6.0)
-    hide video_title with dissolve
+    hide video_title with vtitle
 
     scene bg cafe
     show claire at claire_stage
-    with dissolve
+    with vfade
     $ vsay("hook_plain", "A modern Ren'Py scene: painted 1080p background, flat character sprite.", 6.0)
 
     show layer master at pc98(palette="cafe_claire")
@@ -156,13 +162,13 @@ label poc_video:
 
     scene bg sunset
     show claire at claire_stage
-    with dissolve
+    with vfade
     show layer master at pc98(palette="sunset_claire", dither=2)
     $ vsay("why16", "{b}Why 16 colours?{/b} A deliberate, high-contrast colour script per scene. Gradients become checkerboard texture with real weight.", 12.0)
 
     scene bg cafe
     show claire at claire_stage
-    with dissolve
+    with vfade
     show layer master at pc98_flashlight(palette="cafe_claire")
     $ vsay("hurdle", "{b}The hurdle{/b}: PC-98 artists hand-dithered every frame. Dozens of sprites x expressions x lighting = thousands of frames. It has to be computed on the GPU, every frame.", 14.0)
 
@@ -175,16 +181,16 @@ label poc_video:
     $ vsay("step_palette", "{b}Step 2 — 16 colours.{/b} Every pixel snaps to the nearest palette entry. No dither: gradients collapse into flat bands. The real on-screen limit.", 12.0)
 
     show layer master at pc98(palette="cafe_claire", dither=2)
-    show dither_card onlayer overlay at card_top with dissolve
-    $ vsay("pipeline_2", "{b}2x2 Bayer{/b}: each pixel is compared with a threshold pattern and picks between the two best palette colours. Authentic cross-hatching.", 13.0)
-    hide dither_card onlayer overlay with dissolve
+    show dither_card onlayer overlay at card_top with vcard
+    $ vsay("pipeline_2", "{b}2x2 Bayer{/b}: each pixel is compared with a threshold pattern and picks between the two best palette colours. Authentic cross-hatching.", 13.0, extra=5.0)
+    hide dither_card onlayer overlay with vcard
 
     show layer master at pc98(palette="cafe_claire", dither=4)
     $ vsay("pipeline_4", "{b}4x4 Bayer{/b}: 16 mix ratios, smoother ramps, busier texture.", 9.0)
 
     scene bg sunset
     show claire at claire_stage
-    with dissolve
+    with vfade
     show layer master at pc98(palette="sunset_claire", dither=8)
     $ vsay("pipeline_8", "{b}8x8 Bayer{/b}: 64 ratios. The threshold is computed per emulated pixel, so the pattern stays locked to the grid.", 12.0)
 
@@ -192,55 +198,56 @@ label poc_video:
 
     scene bg cafe
     show claire at claire_stage
-    with dissolve
+    with vfade
     show layer master at pc98(palette="classic", dither=2)
     $ vsay("pal_static", "{b}Static palette{/b}: a generic 16-colour set with skin tones. The character reads everywhere; the background turns muddy.", 10.0)
 
     show layer master at pc98(palette="cafe_claire", dither=2)
     $ vsay("pal_scene", "{b}Per-scene palette{/b}: 16 colours extracted from background + character, snapped to 4 bits per channel.", 10.0)
 
-    show pal_card onlayer overlay at card_top with dissolve
-    $ vsay("pal_tool", "{b}tools/make_palettes.py{/b}: median-cut on background + sprite, farthest-point pick, snap to 4 bits, black at index 0.", 12.0)
-    hide pal_card onlayer overlay with dissolve
+    show pal_card onlayer overlay at card_top with vcard
+    $ vsay("pal_tool", "{b}tools/make_palettes.py{/b}: median-cut on background + sprite, farthest-point pick, snap to 4 bits, black at index 0.", 12.0, extra=5.0)
+    hide pal_card onlayer overlay with vcard
 
     ## === 4. Light, the PC-98 way ==================================================
 
     scene bg candles
     show claire at claire_stage
-    with dissolve
+    with vfade
     show layer master at pc98(palette="candles_claire", ambient=(0.26, 0.24, 0.34))
     $ vsay("candles_off", "{b}Step 3 — light.{/b} Before quantisation the frame is multiplied by an ambient colour and up to two point lights are added. Ambient only: the room goes dark.", 11.0)
 
     show layer master at pc98_candles(palette="candles_claire")
-    show light_card onlayer overlay at card_top with dissolve
-    $ vsay("candles", "Two warm {i}point lights{/i} on the candles, flickering through ATL. Lighting happens before the palette step, so the halos become concentric dither rings.", 12.0)
-    hide light_card onlayer overlay with dissolve
+    show light_card onlayer overlay at card_top with vcard
+    $ vsay("candles", "Two warm {i}point lights{/i} on the candles, flickering through ATL. Lighting happens before the palette step, so the halos become concentric dither rings.", 12.0, extra=5.0)
+    hide light_card onlayer overlay with vcard
 
     scene bg cafe
     show claire at claire_stage
-    with dissolve
+    with vfade
     show layer master at pc98_flashlight(palette="cafe_claire")
     $ vmark("poc_video_mouse_marker")
     $ vsay("flashlight", "Cold ambient + a flashlight following the mouse. Any light you can write as a uniform becomes dithered 16-colour light.", 13.0)
 
     show layer master at pc98_fade_in(palette="cafe_claire", duration=2.5)
-    show regs_card onlayer overlay at card_top with dissolve
-    $ vsay("fade_in", "{b}Hardware tricks{/b}: match against one palette, {i}display{/i} another. Ramp the display registers from black: every pixel keeps its index, only the register values move.", 14.0)
-    hide regs_card onlayer overlay with dissolve
+    show regs_card onlayer overlay at card_top with vcard
+    $ vsay("fade_in", "{b}Hardware tricks{/b}: match against one palette, {i}display{/i} another. Ramp the display registers from black: every pixel keeps its index, only the register values move.", 14.0, extra=5.0)
+    hide regs_card onlayer overlay with vcard
 
     show layer master at pc98_to_night(palette="cafe_claire", duration=3.0)
     $ vsay("pal_swap", "{b}Palette swap{/b}: day to night is a register swap towards a cold version of the same palette. No re-quantisation, no dither crawl.", 14.0)
 
-    scene bg rooftop with dissolve
+    scene bg rooftop with vfade
     show layer master at pc98_lightning(palette="rooftop")
     $ vsay("lightning", "{b}Lightning{/b}: every register slams to white for two frames and decays. One uniform, no extra draw.", 10.0)
 
-    show layer master at pc98_cycle(palette="rooftop", period=0.12)
-    $ vsay("cycle", "{b}Colour cycling{/b}: the two brightest registers swap every few frames. Lights blink without any animated asset.", 9.0)
+    scene bg street at street_pan with vfade
+    show layer master at pc98_cycle(palette="street", period=0.25, indices=pc98_siren("street"))
+    $ vsay("cycle", "{b}Colour cycling{/b}: the red and blue registers swap every few frames. The siren flashes without a single animated frame.", 11.0)
 
     scene bg cafe
     show claire at claire_stage
-    with dissolve
+    with vfade
     show layer master at pc98(palette="cafe_claire", scanline=0.6)
     $ vsay("scanlines", "{b}CRT scanlines{/b}: a dark gap between emulated rows, applied after quantisation.", 8.0)
 
@@ -252,20 +259,21 @@ label poc_video:
     hide sits_tag onlayer overlay
 
     $ pc98_off()
-    scene bg dark with dissolve
-    show tips_card at truecenter with dissolve
+    scene bg dark with vfade
+    show tips_card at truecenter with vfade
     $ vhold("optimize", 14.0)
-    hide tips_card with dissolve
+    $ renpy.pause(4.0, hard=True)
+    hide tips_card with vfade
 
     ## --- End card ----------------------------------------------------------
 
     window hide
-    scene bg dark with dissolve
-    show video_end at truecenter with dissolve
+    scene bg dark with vfade
+    show video_end at truecenter with vtitle
     $ vhold("end", 7.0)
 
-    scene bg dark with dissolve
-    $ renpy.pause(1.5, hard=True)
+    scene bg dark with vtitle
+    $ renpy.pause(2.5, hard=True)
 
     $ renpy.quit()
 

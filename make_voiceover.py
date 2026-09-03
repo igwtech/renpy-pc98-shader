@@ -43,7 +43,7 @@ LINES = [
     ("fade_in", "Now the hardware tricks. The shader matches colors against one palette, but displays another. Ramp the display registers up from black and you get the classic PC-98 fade-in: every pixel keeps its color index, only the register values move."),
     ("pal_swap", "Day to night is the same idea: a register swap towards a cold version of the same palette. No re-quantization, no dither crawl. That is exactly how the original hardware did night scenes."),
     ("lightning", "Lightning. Every register slams to white for two frames and decays. One uniform, no extra draw call."),
-    ("cycle", "Color cycling. The two brightest registers swap every few frames, so lights blink without any animated asset."),
+    ("cycle", "Color cycling. Swap two palette registers every few frames, here the siren's red and blue, and the police lights flash without a single animated frame. On the real hardware this was free; here it is one uniform write per frame."),
     ("scanlines", "And for the CRT feel, an optional scanline pass darkens the gap between emulated rows, after quantization."),
     # --- 5. Integration + performance -------------------------------------------------
     ("integrate", "Dropping this into a real project takes one line: a transform on the master layer. Dialogue lives on its own layer, so the text stays crisp. I'm already running it in my own game, Shafted in the Snow."),

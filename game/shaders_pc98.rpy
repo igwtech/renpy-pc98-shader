@@ -83,26 +83,39 @@ init -10 python:
             return 0
 
     class PC98ColorCycle(object):
-        """ATL `function`: rotates the display registers of the `count`
-        brightest palette entries every `period` seconds (neon, water,
-        blinking lights - the classic palette-cycling animation)."""
+        """ATL `function`: rotates a set of display registers every `period`
+        seconds (neon, water, blinking lights - the classic palette-cycling
+        animation). `indices` picks the registers; by default the `count`
+        brightest entries. With two indices it is a plain swap, e.g. the red
+        and blue of a police siren."""
 
-        def __init__(self, palette, period=0.12, count=2):
+        def __init__(self, palette, period=0.12, count=2, indices=None):
             self.palette = palette
             self.period = period
-            self.count = count
+            pal = pc98_palettes[palette]
+            self.indices = list(indices) if indices else list(range(len(pal) - count, len(pal)))
 
         def __call__(self, trans, st, at):
             pal = pc98_palettes[self.palette]
-            n = len(pal)
-            first = n - self.count
-            shift = int(st / self.period) % self.count
+            n = len(self.indices)
+            shift = int(st / self.period) % n
             for i in range(16):
                 j = i
-                if i >= first:
-                    j = first + ((i - first + shift) % self.count)
+                if i in self.indices:
+                    k = self.indices.index(i)
+                    j = self.indices[(k + shift) % n]
                 setattr(trans, "u_out%d" % i, tuple(pal[j]))
             return 0
+
+    def pc98_find_color(palette, which):
+        """Index of the most saturated red / green / blue register of a palette."""
+        pal = pc98_palettes[palette]
+        ch = {"red": 0, "green": 1, "blue": 2}[which]
+        return max(range(len(pal)), key=lambda i: pal[i][ch] - max(pal[i][(ch + 1) % 3], pal[i][(ch + 2) % 3]))
+
+    def pc98_siren(palette):
+        """(red index, blue index) of a palette, for police-light cycling."""
+        return (pc98_find_color(palette, "red"), pc98_find_color(palette, "blue"))
 
     class PC98MouseLight(object):
         """ATL `function`: point light 1 follows the mouse (the layer is the
@@ -475,7 +488,8 @@ transform pc98_lightning(palette="rooftop"):
         pause 2.5
         repeat
 
-## Palette colour cycling on the brightest registers (blinking lights).
-transform pc98_cycle(palette="rooftop", period=0.12):
+## Palette colour cycling: rotates display registers (blinking lights). With
+## indices=pc98_siren(palette) it swaps the red and blue registers: police lights.
+transform pc98_cycle(palette="rooftop", period=0.12, indices=None):
     pc98(palette=palette)
-    function PC98ColorCycle(palette, period)
+    function PC98ColorCycle(palette, period, indices=indices)
