@@ -26,6 +26,7 @@ label poc_autotest:
             ("rgb4096", "bg cafe", False, pc98_rgb4(), 0.4),
             ("pal16_classic", "bg cafe", False, pc98(palette="classic"), 0.4),
             ("pal16_cafe", "bg cafe", False, pc98(palette="cafe"), 0.4),
+            ("pal16_cafe_nodeadzone", "bg cafe", False, pc98(palette="cafe", flat=0.0), 0.4),
             ("dither_off", "bg sunset", False, pc98(palette="sunset", dither=0), 0.4),
             ("dither_2", "bg sunset", False, pc98(palette="sunset", dither=2), 0.4),
             ("dither_4", "bg sunset", False, pc98(palette="sunset", dither=4), 0.4),

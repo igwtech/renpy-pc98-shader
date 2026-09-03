@@ -18,11 +18,16 @@ image bg candles = Transform("images/bg_candles.webp", zoom=config.screen_height
 image bg rooftop = Transform("images/bg_rooftop.webp", zoom=config.screen_height / 768.0, xalign=0.5)
 
 ## Flat sprite, straight from the file.
-image claire = "images/claire.webp"
+image claire = "images/claire.png"
 
-## Sprite placement (652x1920 source, scaled to the screen height).
+## Sprite placement: scaled to 95% of the screen height whatever the source size.
+init python:
+    def _claire_zoom():
+        w, h = renpy.image_size("images/claire.png")
+        return config.screen_height * 0.95 / float(h)
+
 transform claire_stage:
-    zoom (config.screen_height / 1920.0) * 0.95
+    zoom _claire_zoom()
     xalign 0.5
     yalign 1.0
 
@@ -110,7 +115,7 @@ label scene_dither:
     show layer master at pc98(palette="sunset", dither=8)
     narrator_c "{b}8x8 Bayer{/b}: 64 ratios. Smoothest, but the texture gets busy. Most PC-98 art stayed at 2x2 or 4x4."
     jump hub
-
+ 
 
 label scene_palettes:
     scene bg cafe with dissolve

@@ -135,6 +135,7 @@ init python:
         uniform vec3 u_light2_color;
         uniform vec3 u_post_tint;
         uniform float u_scanline;
+        uniform float u_flat;
         uniform vec3 u_pal0;
         uniform vec3 u_pal1;
         uniform vec3 u_pal2;
@@ -242,12 +243,19 @@ init python:
         // across c1 (c2, "the other side" of the error), and mix them in the
         // proportion that best reproduces c, using the Bayer threshold.
         // Returns the DISPLAY register of the chosen index.
-        vec3 pc98_palette_dither(vec3 c, float t, float dither) {
+        vec3 pc98_palette_dither(vec3 c, float t, float dither, float flat_steps) {
             int i1 = pc98_nearest(c);
             if (dither < 1.5) {
                 return pc98_out_at(i1);
             }
             vec3 c1 = pc98_pal_at(i1);
+            // Dead zone: a colour already within `flat_steps` 4-bit steps of its
+            // nearest palette entry is drawn flat. Kills speckle on near-flat
+            // areas; the palette tool makes most pixels land inside this zone.
+            float step = flat_steps / 15.0;
+            if (pc98_dist(c, c1) <= step * step) {
+                return pc98_out_at(i1);
+            }
             int i2 = pc98_nearest(c + (c - c1));
             vec3 c2 = pc98_pal_at(i2);
             vec3 d = c2 - c1;
@@ -323,7 +331,7 @@ init python:
             g_pal[13] = u_pal13; g_out[13] = u_out13;
             g_pal[14] = u_pal14; g_out[14] = u_out14;
             g_pal[15] = u_pal15; g_out[15] = u_out15;
-            rgb = pc98_palette_dither(rgb, t, u_dither);   // 4. registers inside
+            rgb = pc98_palette_dither(rgb, t, u_dither, u_flat);   // 4. registers inside
         } else {
             float spread = (u_dither > 1.5) ? u_spread : 0.0;
             rgb = pc98_rgb_dither(rgb, t, max(u_levels, 1.0), spread);
@@ -357,8 +365,10 @@ init python:
 ##   light1/2     (x, y, radius) in screen UV; lightN_color additive colour
 ##   tint         post-quantisation multiplier (register fade / flash)
 ##   scanline     0..1 CRT scanline darkness
+##   flat         dead zone in 4-bit steps: colours this close to a palette
+##                entry are drawn flat, without dither (0 = always dither)
 ## ----------------------------------------------------------------------------
-transform pc98(palette="classic", display=None, mode=1, levels=15.0, grid=(640, 360), dither=2, spread=1.0, aa=1.0, ambient=(1.0, 1.0, 1.0), light1=(0.5, 0.5, 0.0), light1_color=(0.0, 0.0, 0.0), light2=(0.5, 0.5, 0.0), light2_color=(0.0, 0.0, 0.0), tint=(1.0, 1.0, 1.0), scanline=0.0):
+transform pc98(palette="classic", display=None, mode=1, levels=15.0, grid=(640, 360), dither=2, spread=1.0, aa=1.0, ambient=(1.0, 1.0, 1.0), light1=(0.5, 0.5, 0.0), light1_color=(0.0, 0.0, 0.0), light2=(0.5, 0.5, 0.0), light2_color=(0.0, 0.0, 0.0), tint=(1.0, 1.0, 1.0), scanline=0.0, flat=1.0):
     mesh True
     shader "pc98.retro"
     u_grid (float(grid[0]), float(grid[1]))
@@ -374,6 +384,7 @@ transform pc98(palette="classic", display=None, mode=1, levels=15.0, grid=(640, 
     u_light2_color light2_color
     u_post_tint tint
     u_scanline float(scanline)
+    u_flat float(flat)
     u_pal0 pc98_pal(palette, 0)
     u_pal1 pc98_pal(palette, 1)
     u_pal2 pc98_pal(palette, 2)

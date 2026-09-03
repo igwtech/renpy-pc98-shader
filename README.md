@@ -111,10 +111,19 @@ pixel keeping its colour index (no re-quantisation, no dither crawl):
 
 ### 5. One palette per scene, like the real thing
 
-`tools/make_palettes.py` (Pillow) picks 16 colours per background: median-cut to 48 candidates,
-snap to 4 bits per channel, farthest-point selection weighted by pixel count (so highlights and
-accents survive on dark images), black forced at index 0. It writes `game/palettes_generated.rpy`
-plus a `*_night` variant of each palette. Hand-made palettes go in `pc98_palettes` in
+`tools/make_palettes.py` (Pillow + NumPy) picks the 16 colours per background so that **as little
+as possible has to be dithered**: a pixel-count-weighted k-means over the scene's 4-bit colour
+histogram (the objective is the quantisation error weighted by how many pixels use each colour),
+with black forced at index 0 and every centre snapped to 4 bits per channel so it is a legal PC-98
+colour. For background+sprite composites the sprite's pixels weigh 4x, so the character gets exact
+colours first and is drawn flat. It writes `game/palettes_generated.rpy`, a `*_night` variant of
+each palette (register-by-register cold shift) and a swatch strip per palette, and prints per
+palette the RMS error and the share of pixels within one 4-bit step of a palette entry.
+
+The shader completes the job with a **dead zone** (`flat=1.0`, in 4-bit steps): a colour that
+close to its nearest palette entry is drawn flat instead of dithered, which removes speckle on
+near-flat areas while gradients keep their checkerboards. `poc_shots/poc_pal16_cafe_nodeadzone.png`
+shows the same scene with `flat=0.0` for comparison. Hand-made palettes go in `pc98_palettes` in
 `game/shaders_pc98.rpy` (`classic` is a generic 16-colour set with skin tones).
 
 ## Files
@@ -126,7 +135,7 @@ plus a `*_night` variant of each palette. Hand-made palettes go in `pc98_palette
 | `game/script.rpy` | Interactive demo: menu hub with 10 scenarios |
 | `game/autotest.rpy` | Headless self-check: renders every preset to `poc_shots/` |
 | `game/videodemo.rpy` | Scripted, non-interactive run for the video (`RENPY_POC_VIDEO=1`) |
-| `tools/make_palettes.py` | Palette extraction tool (backgrounds, background+sprite composites, swatch strips) |
+| `tools/make_palettes.py` | Palette extraction tool: dither-minimising weighted k-means (backgrounds, background+sprite composites, swatch strips) |
 | `make_voiceover.py` | Gemini TTS narration -> `vo/*.wav` + `vo/durations.json` |
 | `record_video.sh` | Records the demo to `poc_video.mp4` via Xvfb + ffmpeg + xdotool |
 | `mix_voiceover.py` | Places the clips at the recorded cues -> `poc_video_vo.mp4` |
