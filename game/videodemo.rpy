@@ -216,7 +216,7 @@ label poc_video:
     $ vsay("pal_scene", "{b}Per-scene palette{/b}: 16 colours extracted from background + character, snapped to 4 bits per channel.", 10.0)
 
     show screen vcard("pal_card", card_top) with vcard
-    $ vsay("pal_tool", "{b}tools/make_palettes.py{/b}: median-cut on background + sprite, farthest-point pick, snap to 4 bits, black at index 0.", 12.0, extra=5.0)
+    $ vsay("pal_tool", "{b}tools/make_palettes.py{/b}: pixel-weighted k-means over background + sprite (sprite x4), snap to 4 bits, black at index 0. Most pixels land on exact entries.", 12.0, extra=5.0)
     hide screen vcard with vcard
 
     ## === 4. Light, the PC-98 way ==================================================

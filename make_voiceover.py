@@ -35,7 +35,7 @@ LINES = [
     # --- 3. Palettes ----------------------------------------------------------------
     ("pal_static", "Palette choice is the real art here. A fixed, generic sixteen-color palette with skin tones keeps the character readable in any scene, but the background turns muddy."),
     ("pal_scene", "A palette extracted per scene, sixteen colors picked from background and character together and snapped to the PC-98's four bits per channel, keeps everything vibrant."),
-    ("pal_tool", "The palettes come from a small offline script: median-cut quantization of background and sprite together, a farthest-point pick so highlights and accents survive, and every color snapped to four bits per channel so it is a legal PC-98 color. Sixteen swatches per scene, exactly what a PC-98 artist would have hand-picked."),
+    ("pal_tool", "The palettes come from a small offline script: a pixel-count-weighted k-means over background and sprite together, so the colors most pixels actually use become exact palette entries and as little as possible has to be dithered. Every color is snapped to four bits per channel, so it is a legal PC-98 color. Sixteen swatches per scene, exactly what a PC-98 artist would have hand-picked."),
     # --- 4. Light, the PC-98 way ----------------------------------------------------
     ("candles_off", "Step three: light. Before quantization, the shader multiplies the frame by an ambient color and adds up to two point lights. With the ambient alone, the room goes dark."),
     ("candles", "Two warm point lights on the candles, flickering through ATL. Because lighting happens before the palette step, the halos turn into concentric dither rings, exactly how hand-drawn PC-98 candlelight looked."),
