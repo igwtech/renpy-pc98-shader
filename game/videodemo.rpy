@@ -126,6 +126,16 @@ transform card_top:
     xalign 0.5
     yalign 0.04
 
+## Cards live in a screen: the screens layer is not processed by the master
+## layer shader and, unlike the overlay layer, is not cleared on each interaction.
+screen vcard(img, pos):
+    zorder 50
+    add img at pos
+
+screen vtag(img, pos):
+    zorder 51
+    add img at pos
+
 transform sits_tag_pos:
     xalign 0.98
     yalign 0.03
@@ -181,9 +191,9 @@ label poc_video:
     $ vsay("step_palette", "{b}Step 2 — 16 colours.{/b} Every pixel snaps to the nearest palette entry. No dither: gradients collapse into flat bands. The real on-screen limit.", 12.0)
 
     show layer master at pc98(palette="cafe_claire", dither=2)
-    show dither_card onlayer overlay at card_top with vcard
+    show screen vcard("dither_card", card_top) with vcard
     $ vsay("pipeline_2", "{b}2x2 Bayer{/b}: each pixel is compared with a threshold pattern and picks between the two best palette colours. Authentic cross-hatching.", 13.0, extra=5.0)
-    hide dither_card onlayer overlay with vcard
+    hide screen vcard with vcard
 
     show layer master at pc98(palette="cafe_claire", dither=4)
     $ vsay("pipeline_4", "{b}4x4 Bayer{/b}: 16 mix ratios, smoother ramps, busier texture.", 9.0)
@@ -205,9 +215,9 @@ label poc_video:
     show layer master at pc98(palette="cafe_claire", dither=2)
     $ vsay("pal_scene", "{b}Per-scene palette{/b}: 16 colours extracted from background + character, snapped to 4 bits per channel.", 10.0)
 
-    show pal_card onlayer overlay at card_top with vcard
+    show screen vcard("pal_card", card_top) with vcard
     $ vsay("pal_tool", "{b}tools/make_palettes.py{/b}: median-cut on background + sprite, farthest-point pick, snap to 4 bits, black at index 0.", 12.0, extra=5.0)
-    hide pal_card onlayer overlay with vcard
+    hide screen vcard with vcard
 
     ## === 4. Light, the PC-98 way ==================================================
 
@@ -218,9 +228,9 @@ label poc_video:
     $ vsay("candles_off", "{b}Step 3 — light.{/b} Before quantisation the frame is multiplied by an ambient colour and up to two point lights are added. Ambient only: the room goes dark.", 11.0)
 
     show layer master at pc98_candles(palette="candles_claire")
-    show light_card onlayer overlay at card_top with vcard
+    show screen vcard("light_card", card_top) with vcard
     $ vsay("candles", "Two warm {i}point lights{/i} on the candles, flickering through ATL. Lighting happens before the palette step, so the halos become concentric dither rings.", 12.0, extra=5.0)
-    hide light_card onlayer overlay with vcard
+    hide screen vcard with vcard
 
     scene bg cafe
     show claire at claire_stage
@@ -230,9 +240,9 @@ label poc_video:
     $ vsay("flashlight", "Cold ambient + a flashlight following the mouse. Any light you can write as a uniform becomes dithered 16-colour light.", 13.0)
 
     show layer master at pc98_fade_in(palette="cafe_claire", duration=2.5)
-    show regs_card onlayer overlay at card_top with vcard
+    show screen vcard("regs_card", card_top) with vcard
     $ vsay("fade_in", "{b}Hardware tricks{/b}: match against one palette, {i}display{/i} another. Ramp the display registers from black: every pixel keeps its index, only the register values move.", 14.0, extra=5.0)
-    hide regs_card onlayer overlay with vcard
+    hide screen vcard with vcard
 
     show layer master at pc98_to_night(palette="cafe_claire", duration=3.0)
     $ vsay("pal_swap", "{b}Palette swap{/b}: day to night is a register swap towards a cold version of the same palette. No re-quantisation, no dither crawl.", 14.0)
@@ -254,9 +264,9 @@ label poc_video:
     ## === 5. Integration + performance ==============================================
 
     show layer master at pc98(palette="cafe_claire")
-    show sits_tag onlayer overlay at sits_tag_pos
+    show screen vtag("sits_tag", sits_tag_pos)
     $ vsay("integrate", "{b}In a real project{/b}: one transform on the master layer. Dialogue stays crisp on its own layer. Already shipping in {i}Shafted in the Snow{/i}.", 12.0)
-    hide sits_tag onlayer overlay
+    hide screen vtag
 
     $ pc98_off()
     scene bg dark with vfade
