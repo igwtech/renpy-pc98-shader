@@ -256,19 +256,12 @@ init python:
         // across c1 (c2, "the other side" of the error), and mix them in the
         // proportion that best reproduces c, using the Bayer threshold.
         // Returns the DISPLAY register of the chosen index.
-        vec3 pc98_palette_dither(vec3 c, float t, float dither, float flat_steps) {
+        vec3 pc98_palette_dither(vec3 c, float t, float dither, float flat_frac) {
             int i1 = pc98_nearest(c);
             if (dither < 1.5) {
                 return pc98_out_at(i1);
             }
             vec3 c1 = pc98_pal_at(i1);
-            // Dead zone: a colour already within `flat_steps` 4-bit steps of its
-            // nearest palette entry is drawn flat. Kills speckle on near-flat
-            // areas; the palette tool makes most pixels land inside this zone.
-            float step = flat_steps / 15.0;
-            if (pc98_dist(c, c1) <= step * step) {
-                return pc98_out_at(i1);
-            }
             int i2 = pc98_nearest(c + (c - c1));
             vec3 c2 = pc98_pal_at(i2);
             vec3 d = c2 - c1;
@@ -277,6 +270,14 @@ init python:
                 return pc98_out_at(i1);
             }
             float f = clamp(dot(c - c1, d) / dd, 0.0, 1.0);
+            // Dead zone, RELATIVE to the distance between the two candidates:
+            // a colour that would get fewer than `flat_frac` of c2 pixels is
+            // drawn flat. This kills speckle on near-flat areas without
+            // creating plateaus in smooth gradients (an absolute dead zone
+            // did: with entries two steps apart nothing was dithered at all).
+            if (f < flat_frac) {
+                return pc98_out_at(i1);
+            }
             return (t < f) ? pc98_out_at(i2) : pc98_out_at(i1);
         }
 
@@ -378,10 +379,11 @@ init python:
 ##   light1/2     (x, y, radius) in screen UV; lightN_color additive colour
 ##   tint         post-quantisation multiplier (register fade / flash)
 ##   scanline     0..1 CRT scanline darkness
-##   flat         dead zone in 4-bit steps: colours this close to a palette
-##                entry are drawn flat, without dither (0 = always dither)
+##   flat         dead zone as a fraction of the distance between the two
+##                dither candidates (0..0.5): below it the pixel is drawn flat.
+##                0 = always dither, 0.12 = kills speckle, keeps gradients smooth
 ## ----------------------------------------------------------------------------
-transform pc98(palette="classic", display=None, mode=1, levels=15.0, grid=(640, 360), dither=2, spread=1.0, aa=1.0, ambient=(1.0, 1.0, 1.0), light1=(0.5, 0.5, 0.0), light1_color=(0.0, 0.0, 0.0), light2=(0.5, 0.5, 0.0), light2_color=(0.0, 0.0, 0.0), tint=(1.0, 1.0, 1.0), scanline=0.0, flat=1.0):
+transform pc98(palette="classic", display=None, mode=1, levels=15.0, grid=(640, 360), dither=2, spread=1.0, aa=1.0, ambient=(1.0, 1.0, 1.0), light1=(0.5, 0.5, 0.0), light1_color=(0.0, 0.0, 0.0), light2=(0.5, 0.5, 0.0), light2_color=(0.0, 0.0, 0.0), tint=(1.0, 1.0, 1.0), scanline=0.0, flat=0.12):
     mesh True
     shader "pc98.retro"
     u_grid (float(grid[0]), float(grid[1]))

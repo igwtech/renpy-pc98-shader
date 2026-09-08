@@ -122,10 +122,14 @@ colours first and is drawn flat. It writes `game/palettes_generated.rpy`, a `*_n
 each palette (register-by-register cold shift) and a swatch strip per palette, and prints per
 palette the RMS error and the share of pixels within one 4-bit step of a palette entry.
 
-The shader completes the job with a **dead zone** (`flat=1.0`, in 4-bit steps): a colour that
-close to its nearest palette entry is drawn flat instead of dithered, which removes speckle on
-near-flat areas while gradients keep their checkerboards. `poc_shots/poc_pal16_cafe_nodeadzone.png`
-shows the same scene with `flat=0.0` for comparison. Hand-made palettes go in `pc98_palettes` in
+The shader completes the job with a **dead zone** (`flat=0.12`): when the pixel would get fewer
+than that fraction of the second candidate colour, it is drawn flat. That removes speckle on
+near-flat areas while soft gradients keep dithering. The dead zone is relative to the distance
+between the two candidates on purpose: an absolute one (in colour steps) turned smooth skies into
+plateaus with hard steps, because with palette entries two steps apart nothing in between was
+dithered. Smooth regions of the image (little edge energy) also weigh 4x in the palette k-means,
+so gradients get enough evenly spaced entries. `poc_shots/poc_pal16_cafe_nodeadzone.png` shows the
+same scene with `flat=0.0` for comparison. Hand-made palettes go in `pc98_palettes` in
 `game/shaders_pc98.rpy` (`classic` is a generic 16-colour set with skin tones).
 
 ## Files

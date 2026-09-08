@@ -22,6 +22,7 @@ import os
 
 import numpy as np
 from PIL import Image
+from scipy import ndimage
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 IMAGES = os.path.join(ROOT, "game", "images")
@@ -63,6 +64,15 @@ def _wdist(a, b):
 
 
 SPRITE_WEIGHT = 4.0   # the character must read well: its pixels count 4x in the objective
+SMOOTH_WEIGHT = 3.0   # pixels in smooth regions (sky, walls) count 4x: that is where banding shows
+
+
+def smooth_mask(im, size=(480, 270), threshold=12.0):
+    """True where the image has (almost) no edges: soft gradients that would
+    show banding if the palette skimps on them."""
+    a = np.asarray(im.convert("L").resize(size, Image.LANCZOS), dtype=np.float64)
+    g = np.hypot(ndimage.sobel(a, 0), ndimage.sobel(a, 1))
+    return g < threshold
 
 
 ## Colours that must be in a palette (snapped to 4 bits): e.g. the two siren
@@ -84,6 +94,7 @@ def palette_for(im, colors=16, sprite_mask=None, fixed=()):
     small = im.convert("RGB").resize((480, 270), Image.LANCZOS)
     px = np.asarray(small).reshape(-1, 3)
     w = np.ones(len(px))
+    w[smooth_mask(im).reshape(-1)] *= 1.0 + SMOOTH_WEIGHT
     if sprite_mask is not None:
         m = np.asarray(sprite_mask.resize((480, 270), Image.LANCZOS)).reshape(-1) > 128
         w[m] = SPRITE_WEIGHT
