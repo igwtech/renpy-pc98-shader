@@ -8,12 +8,12 @@ late-80s / early-90s NEC PC-9801 game: coarse pixel grid, one 16-colour palette 
 effects done the way the real machine did them, by manipulating palette registers. Everything
 happens in a single GLSL fragment shader; backgrounds and sprites are untouched PNG/WebP files.
 
-📺 **Video:** [Emulating PC-98 Limited Color Palette Lighting Effects on Modern Ren'Py Sprites](https://youtu.be/vSPSRfWY7Os)
-(7 min, Gemini TTS voice-over): pixelate → 16 colours → Bayer dither, per-scene palettes,
+📺 **Video:** [Emulating PC-98 Limited Color Palette Lighting Effects on Modern Ren'Py Sprites](https://youtu.be/bjDYf-jGA70)
+(7 min 35 s, Gemini TTS voice-over): pixelate → 16 colours → Bayer dither, per-scene palettes,
 pre-quantisation lights and palette-register tricks (fade, night swap, lightning, sky colour
 cycling). The pipeline is in production in the author's game *Shafted in the Snow*.
 
-[![thumbnail](poc_thumbnail.jpg)](https://youtu.be/vSPSRfWY7Os)
+[![thumbnail](poc_thumbnail.jpg)](https://youtu.be/bjDYf-jGA70)
 
 | Original (painting by sodaodaoda) | 4096 colours (4 bit/channel) + 2x2 dither | 16-colour per-image palette |
 |---|---|---|
