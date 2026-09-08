@@ -22,10 +22,10 @@ STYLE = "Narrate in a clear, warm, engaging tech-demo narrator voice, at a livel
 LINES = [
     # --- 1. The magic of PC-98 visuals in modern engines ----------------------
     ("title", "Think you need modern 4K textures to make your visual novel look stunning? What if limiting your game to just sixteen colors actually makes it look better? Today we're bringing back the iconic, high-contrast PC-98 aesthetic inside Ren'Py with a single custom shader: limited palettes, ordered dithering, and the palette-register lighting tricks of the original hardware."),
-    ("hook_plain", "Here is an ordinary modern Ren'Py scene. A painted 1080p background and a flat character sprite, millions of colors."),
+    ("hook_plain", "Here is a modern painted illustration: smooth gradients, soft shading, millions of colors."),
     ("hook_pc98", "And here is the same scene, one line of code later. 640 by 360 pixels, sixteen colors, ordered dithering. A PC-98 game, rendered live from modern assets."),
     ("why16", "Why does this look so good? A sixteen-color palette forces every scene into a deliberate, high-contrast color script. Gradients become checkerboard textures with real visual weight. That grit is exactly what most smooth, flat-shaded indie games are missing."),
-    ("hurdle", "The catch: real PC-98 artists hand-dithered every single frame. A modern visual novel has dozens of sprites, each with expressions, poses and lighting changes. Nobody is going to pixel-art thousands of frames by hand. The look has to be computed dynamically, on the GPU, every frame."),
+    ("hurdle", "The catch: real PC-98 artists hand-dithered every single frame. A modern visual novel has dozens of scenes, each with lighting states and animation. Nobody is going to pixel-art thousands of frames by hand. The look has to be computed dynamically, on the GPU, every frame."),
     # --- 2. Pixelate -> quantise -> dither ----------------------------------------
     ("step_pixelate", "Step one. The shader runs once, on the whole master layer. It snaps the frame to a 640 by 360 grid, then quantizes every channel to four bits: the PC-98's 4096-color hardware space. Already retro, but still far more colors than the machine could show at once."),
     ("step_palette", "Step two: sixteen colors. Every pixel is matched to the nearest entry of a sixteen-color palette. With no dithering, the gradients collapse into flat bands. This is the real on-screen limit of a PC-98."),
@@ -33,22 +33,23 @@ LINES = [
     ("pipeline_4", "A four-by-four matrix gives sixteen mix ratios and smoother ramps, at the price of a busier texture. Most PC-98 art lived somewhere between the two."),
     ("pipeline_8", "Eight by eight gives sixty-four ratios. Smoothest, but the texture gets busy. The threshold is computed per emulated pixel, so the pattern stays locked to the pixel grid, just like on the real machine."),
     # --- 3. Palettes ----------------------------------------------------------------
-    ("pal_static", "Palette choice is the real art here. A fixed, generic sixteen-color palette with skin tones keeps the character readable in any scene, but the background turns muddy."),
-    ("pal_scene", "A palette extracted per scene, sixteen colors picked from background and character together and snapped to the PC-98's four bits per channel, keeps everything vibrant."),
-    ("pal_tool", "The palettes come from a small offline script: a pixel-count-weighted k-means over background and sprite together, so the colors most pixels actually use become exact palette entries and as little as possible has to be dithered. Every color is snapped to four bits per channel, so it is a legal PC-98 color. Sixteen swatches per scene, exactly what a PC-98 artist would have hand-picked."),
+    ("pal_static", "Palette choice is the real art here. A fixed, generic sixteen-color palette with skin tones keeps a character readable in any scene, but the purple hair and the warm backdrop turn muddy."),
+    ("pal_scene", "A palette extracted per image, sixteen colors picked from the illustration itself and snapped to the PC-98's four bits per channel, keeps everything vibrant."),
+    ("pal_tool", "The palettes come from a small offline script: a pixel-count-weighted k-means over the image, where smooth regions weigh more so soft gradients get enough evenly spaced entries and never band. Every color is snapped to four bits per channel, so it is a legal PC-98 color. Sixteen swatches per scene, exactly what a PC-98 artist would have hand-picked."),
     # --- 4. Light, the PC-98 way ----------------------------------------------------
-    ("candles_off", "Step three: light. Before quantization, the shader multiplies the frame by an ambient color and adds up to two point lights. With the ambient alone, the room goes dark."),
-    ("candles", "Two warm point lights on the candles, flickering through ATL. Because lighting happens before the palette step, the halos turn into concentric dither rings, exactly how hand-drawn PC-98 candlelight looked."),
+    ("lamps_off", "Step three: light. Before quantization, the shader multiplies the frame by an ambient color and adds up to two point lights. With the ambient alone, the hallway goes dark."),
+    ("lamps", "Two warm point lights, flickering through ATL. Because lighting happens before the palette step, the halos turn into concentric dither rings, exactly how hand-drawn PC-98 lamplight looked."),
     ("flashlight", "A cold ambient and a flashlight that follows the mouse. Any light you can express as a uniform becomes dithered, sixteen-color light, for free."),
     ("fade_in", "Now the hardware tricks. The shader matches colors against one palette, but displays another. Ramp the display registers up from black and you get the classic PC-98 fade-in: every pixel keeps its color index, only the register values move."),
     ("pal_swap", "Day to night is the same idea: a register swap towards a cold version of the same palette. No re-quantization, no dither crawl. That is exactly how the original hardware did night scenes."),
     ("lightning", "Lightning. Every register slams to white for two frames and decays. One uniform, no extra draw call."),
-    ("cycle", "Color cycling. Swap two palette registers every few frames, here the siren's red and blue, and the police lights flash without a single animated frame. On the real hardware this was free; here it is one uniform write per frame."),
+    ("cycle", "Color cycling. Rotate a few palette registers every few frames, here the three blues of the sky, and the scene shimmers without a single animated frame. On the real hardware this was free; here it is one uniform write per frame."),
     ("scanlines", "And for the CRT feel, an optional scanline pass darkens the gap between emulated rows, after quantization."),
     # --- 5. Integration + performance -------------------------------------------------
     ("integrate", "Dropping this into a real project takes one line: a transform on the master layer. Dialogue lives on its own layer, so the text stays crisp. I'm already running it in my own game, Shafted in the Snow."),
     ("optimize", "Performance tips. Keep it to a single pass per layer. Precompute palettes offline. Cap the palette search at sixteen iterations. Turn off the supersampling on mobile. And avoid dynamic array indexing, so the shader compiles on GLES and ANGLE for phones and Windows."),
     ("end", "Vintage hardware constraints, modern engine flexibility. Take the code, swap in your own art, and experiment. Full source on GitHub, link in the description."),
+    ("credits", "The artwork in this video is by sodaodaoda, RouRenzu and LisadiKaprio, used under their Creative Commons licenses. Links and licenses in the description. Touhou Project belongs to Team Shanghai Alice; no AI-generated images were used."),
 ]
 
 

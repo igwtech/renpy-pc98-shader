@@ -65,6 +65,8 @@ def _wdist(a, b):
 
 SPRITE_WEIGHT = 4.0   # the character must read well: its pixels count 4x in the objective
 SMOOTH_WEIGHT = 3.0   # pixels in smooth regions (sky, walls) count 4x: that is where banding shows
+SAT_WEIGHT = 3.0      # saturated colours count up to 4x: a purple hair or a red bow must survive
+                      # even if it covers few pixels (the eye notices a lost hue before a lost shade)
 
 
 def smooth_mask(im, size=(480, 270), threshold=12.0):
@@ -78,8 +80,59 @@ def smooth_mask(im, size=(480, 270), threshold=12.0):
 ## Colours that must be in a palette (snapped to 4 bits): e.g. the two siren
 ## colours of the police car, so the colour-cycling demo can swap them.
 FIXED = {
-    "street": [(255, 34, 34), (34, 85, 255)],
+    # "street": [(255, 34, 34), (34, 85, 255)],  # e.g. pin a siren's red and blue
 }
+
+
+HUE_BINS = 12
+HUE_MIN_SHARE = 0.02   # a hue family covering >= 2% of the chroma-weighted pixels must be in the palette
+
+
+def hue_guard(px, w, centers, fixed_arr):
+    """k-means minimises squared error, so a small but saturated region (a purple
+    hair over a big brown wall) can lose its hue entirely. For every hue family
+    that carries enough chroma-weighted pixels, make sure one palette entry is
+    within +-1 hue bin of it; if not, replace the lightest-loaded centre with
+    the family's mean colour. Returns the corrected centres."""
+    import colorsys
+    pxf = px.astype(np.float64) / 255.0
+    mx, mn = pxf.max(axis=1), pxf.min(axis=1)
+    chroma = mx - mn
+    sat_mask = chroma > 0.18
+    if not sat_mask.any():
+        return centers
+    hues = np.array([colorsys.rgb_to_hsv(*c)[0] for c in pxf[sat_mask]])
+    weights = (w * chroma)[sat_mask]
+    bins = np.minimum((hues * HUE_BINS).astype(int), HUE_BINS - 1)
+    share = np.bincount(bins, weights=weights, minlength=HUE_BINS)
+    share /= share.sum()
+
+    def pal_hue_bins(cs):
+        out = []
+        for c in cs:
+            cc = c / 255.0
+            if cc.max() - cc.min() > 0.12:
+                out.append(int(colorsys.rgb_to_hsv(*cc)[0] * HUE_BINS) % HUE_BINS)
+        return out
+
+    load = None
+    for b in np.argsort(-share):
+        if share[b] < HUE_MIN_SHARE:
+            break
+        present = pal_hue_bins(list(fixed_arr) + list(centers))
+        if any(min(abs(pb - b), HUE_BINS - abs(pb - b)) <= 1 for pb in present):
+            continue
+        # mean colour of that hue family, replacing the least-loaded centre
+        m = bins == b
+        mean = (pxf[sat_mask][m] * weights[m, None]).sum(axis=0) / weights[m].sum() * 255.0
+        if load is None:
+            allc = np.vstack([fixed_arr, centers])
+            assign = _wdist(np.asarray(px, dtype=np.float64), allc).argmin(axis=1)
+            load = np.array([w[assign == len(fixed_arr) + j].sum() for j in range(len(centers))])
+        j = int(np.argmin(load))
+        centers[j] = mean
+        load[j] = np.inf
+    return centers
 
 
 def palette_for(im, colors=16, sprite_mask=None, fixed=()):
@@ -95,6 +148,8 @@ def palette_for(im, colors=16, sprite_mask=None, fixed=()):
     px = np.asarray(small).reshape(-1, 3)
     w = np.ones(len(px))
     w[smooth_mask(im).reshape(-1)] *= 1.0 + SMOOTH_WEIGHT
+    chroma = (px.max(axis=1) - px.min(axis=1)) / 255.0
+    w *= 1.0 + SAT_WEIGHT * chroma
     if sprite_mask is not None:
         m = np.asarray(sprite_mask.resize((480, 270), Image.LANCZOS)).reshape(-1) > 128
         w[m] = SPRITE_WEIGHT
@@ -129,17 +184,31 @@ def palette_for(im, colors=16, sprite_mask=None, fixed=()):
             break
         centers = new
 
+    centers = hue_guard(px, w, centers, fixed_arr)
     out = fixed_list + [to_4bit(tuple(int(round(v)) for v in c)) for c in centers]
     seen, uniq = set(), []
     for c in out:
         if c not in seen:
             seen.add(c)
             uniq.append(c)
-    while len(uniq) < colors:   # refill slots lost to snapping with the heaviest residual
+    # Refill slots lost to snapping with the heaviest unrepresented colours;
+    # a very dark / flat image may not even have 16 distinct 4-bit colours,
+    # then pad with in-between shades so the palette always has 16 entries.
+    while len(uniq) < colors:
         d = _wdist(cols, np.array(uniq, dtype=np.float64)).min(axis=1) * counts
-        c = to_4bit(tuple(int(v) for v in cols[int(np.argmax(d))]))
-        if c in seen:
+        d[[i for i, c in enumerate(cols) if to_4bit(tuple(int(v) for v in c)) in seen]] = -1
+        if d.max() <= 0:
             break
+        c = to_4bit(tuple(int(v) for v in cols[int(np.argmax(d))]))
+        seen.add(c)
+        uniq.append(c)
+    while len(uniq) < colors:
+        a, b = uniq[-2], uniq[-1]
+        c = to_4bit(tuple(min(255, int((x + y) / 2) + 17) for x, y in zip(a, b)))
+        if c in seen:
+            c = to_4bit(tuple(min(255, x + 17) for x in b))
+        if c in seen:
+            c = (255, 255, 255) if (255, 255, 255) not in seen else (128, 128, 128)
         seen.add(c)
         uniq.append(c)
     return sorted(uniq[:colors], key=lambda c: 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2])
@@ -157,10 +226,7 @@ def dither_stats(im, palette):
 ## Scene composites: background + character sprite, so the 16 colours are
 ## shared between both (what a PC-98 artist would have done for that scene).
 COMPOSITES = {
-    "cafe_claire": ("bg_cafe.webp", "claire.png"),
-    "sunset_claire": ("bg_sunset.webp", "claire.png"),
-    "candles_claire": ("bg_candles.webp", "claire.png"),
-    "rooftop_claire": ("bg_rooftop.webp", "claire.png"),
+    # "scene_sprite": ("bg_scene.png", "sprite.png"),  # none in the current asset set
 }
 
 
@@ -188,7 +254,7 @@ def composite(bg_name, sprite_name, screen=(1920, 1080), with_mask=False):
 
 def main():
     entries = []
-    for path in sorted(glob.glob(os.path.join(IMAGES, "bg_*.webp"))):
+    for path in sorted(glob.glob(os.path.join(IMAGES, "bg_*.webp")) + glob.glob(os.path.join(IMAGES, "bg_*.png"))):
         name = os.path.splitext(os.path.basename(path))[0][3:]
         im = Image.open(path).convert("RGB")
         day = palette_for(im, fixed=FIXED.get(name, ()))

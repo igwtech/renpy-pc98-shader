@@ -10,34 +10,37 @@ happens in a single GLSL fragment shader; backgrounds and sprites are untouched 
 
 📺 **Video:** [Emulating PC-98 Limited Color Palette Lighting Effects on Modern Ren'Py Sprites](https://youtu.be/vSPSRfWY7Os)
 (7 min, Gemini TTS voice-over): pixelate → 16 colours → Bayer dither, per-scene palettes,
-pre-quantisation lights and palette-register tricks (fade, night swap, lightning, police-siren
-colour cycling). The pipeline is in production in the author's game *Shafted in the Snow*.
+pre-quantisation lights and palette-register tricks (fade, night swap, lightning, sky colour
+cycling). The pipeline is in production in the author's game *Shafted in the Snow*.
 
 [![thumbnail](poc_thumbnail.jpg)](https://youtu.be/vSPSRfWY7Os)
 
-| Original | 4096 colours (4 bit/channel) + 2x2 dither | 16-colour scene palette |
+| Original (painting by sodaodaoda) | 4096 colours (4 bit/channel) + 2x2 dither | 16-colour per-image palette |
 |---|---|---|
-| ![original](poc_shots/poc_original.png) | ![rgb](poc_shots/poc_rgb4096.png) | ![pal](poc_shots/poc_pal16_cafe.png) |
+| ![original](poc_shots/poc_original.png) | ![rgb](poc_shots/poc_rgb4096.png) | ![pal](poc_shots/poc_pal16_alice.png) |
 
 | No dither | 2x2 Bayer | 4x4 Bayer | 8x8 Bayer |
 |---|---|---|---|
 | ![off](poc_shots/poc_dither_off.png) | ![2](poc_shots/poc_dither_2.png) | ![4](poc_shots/poc_dither_4.png) | ![8](poc_shots/poc_dither_8.png) |
 
-| Generic palette (has skin tones) | Per-scene palette (no skin tones) |
-|---|---|
-| ![classic](poc_shots/poc_sprite_classic.png) | ![cafe](poc_shots/poc_sprite_cafe.png) |
-
-| Candles, lights off | Candles, two flickering point lights | Night ambient + flashlight |
+| Original (illustration by RouRenzu) | Generic 16-colour palette | Per-image palette |
 |---|---|---|
-| ![off](poc_shots/poc_candles_off.png) | ![on](poc_shots/poc_candles.png) | ![flash](poc_shots/poc_flashlight.png) |
+| ![reimu](poc_shots/poc_reimu_original.png) | ![classic](poc_shots/poc_reimu_classic.png) | ![scene](poc_shots/poc_reimu_scene.png) |
+
+| Hallway (LisadiKaprio), lights off | Two flickering point lights | Night art + flashlight |
+|---|---|---|
+| ![off](poc_shots/poc_lamps_off.png) | ![on](poc_shots/poc_lamps.png) | ![flash](poc_shots/poc_flashlight.png) |
 
 | Hardware fade-in (mid-way) | Night palette (register swap) | Lightning (register slam) |
 |---|---|---|
 | ![fade](poc_shots/poc_fade_mid.png) | ![night](poc_shots/poc_night.png) | ![lightning](poc_shots/poc_lightning.png) |
 
-| CRT scanlines | 8-colour digital palette (PC-88) |
-|---|---|
-| ![scan](poc_shots/poc_scanlines.png) | ![8](poc_shots/poc_digital8.png) |
+| Sky colour cycling | CRT scanlines | 8-colour digital palette (PC-88) |
+|---|---|---|
+| ![cycle](poc_shots/poc_cycle.png) | ![scan](poc_shots/poc_scanlines.png) | ![8](poc_shots/poc_digital8.png) |
+
+Artwork by sodaodaoda, RouRenzu and LisadiKaprio under Creative Commons licences, see
+[CREDITS.md](CREDITS.md). No AI-generated images.
 
 ## How it works
 
@@ -57,7 +60,7 @@ flowchart LR
 ### 1. The whole layer goes through one transform
 
 ```renpy
-show layer master at pc98(palette="cafe")          # on
+show layer master at pc98(palette="alice")         # on
 $ renpy.layer_at_list([], "master")                # off
 ```
 
@@ -106,10 +109,10 @@ pixel keeping its colour index (no re-quantisation, no dither crawl):
 
 | Effect | How |
 |---|---|
-| Fade in / out | `PC98PaletteFade("black", "cafe", 2.0)` ramps `u_out*` |
-| Day -> night | `PC98PaletteFade("cafe", "cafe_night", 2.5)` (night palette derived register by register) |
+| Fade in / out | `PC98PaletteFade("black", "alice", 2.0)` ramps `u_out*` |
+| Day -> night | `PC98PaletteFade("hallway", "hallway_night", 2.5)` (night palette derived register by register) |
 | Lightning | `u_post_tint (6.0, 6.0, 6.0)` for two frames, then `linear` back |
-| Police siren | `PC98ColorCycle("street", 0.25, indices=pc98_siren("street"))` swaps the red and blue registers |
+| Sky shimmer | `PC98ColorCycle("alice", 0.25, indices=pc98_sky("alice"))` rotates the light blue registers (`pc98_siren()` picks a red/blue pair for police lights) |
 
 ### 5. One palette per scene, like the real thing
 
@@ -117,8 +120,10 @@ pixel keeping its colour index (no re-quantisation, no dither crawl):
 as possible has to be dithered**: a pixel-count-weighted k-means over the scene's 4-bit colour
 histogram (the objective is the quantisation error weighted by how many pixels use each colour),
 with black forced at index 0 and every centre snapped to 4 bits per channel so it is a legal PC-98
-colour. For background+sprite composites the sprite's pixels weigh 4x, so the character gets exact
-colours first and is drawn flat. It writes `game/palettes_generated.rpy`, a `*_night` variant of
+colour. Saturated pixels weigh up to 4x more and a hue guard makes sure every hue family that
+covers at least 2% of the chroma-weighted pixels keeps one entry (a purple hair over a brown wall
+would otherwise be averaged away). For background+sprite composites the sprite's pixels weigh 4x,
+so a character gets exact colours first. It writes `game/palettes_generated.rpy`, a `*_night` variant of
 each palette (register-by-register cold shift) and a swatch strip per palette, and prints per
 palette the RMS error and the share of pixels within one 4-bit step of a palette entry.
 
@@ -128,7 +133,7 @@ near-flat areas while soft gradients keep dithering. The dead zone is relative t
 between the two candidates on purpose: an absolute one (in colour steps) turned smooth skies into
 plateaus with hard steps, because with palette entries two steps apart nothing in between was
 dithered. Smooth regions of the image (little edge energy) also weigh 4x in the palette k-means,
-so gradients get enough evenly spaced entries. `poc_shots/poc_pal16_cafe_nodeadzone.png` shows the
+so gradients get enough evenly spaced entries. `poc_shots/poc_pal16_alice_nodeadzone.png` shows the
 same scene with `flat=0.0` for comparison. Hand-made palettes go in `pc98_palettes` in
 `game/shaders_pc98.rpy` (`classic` is a generic 16-colour set with skin tones).
 
@@ -191,6 +196,8 @@ env -u WAYLAND_DISPLAY DISPLAY=:99 SDL_VIDEODRIVER=x11 SDL_AUDIODRIVER=dummy \
 ## Credits & disclaimer
 
 - Code: MIT (see `LICENSE`).
-- The backgrounds and the "Claire" sprite are assets from the in-progress game
-  *Shafted in the Snow* and are included solely as a technical demonstration; they are **not**
-  covered by the MIT license.
+- Artwork: *Alice (PC-98)* by sodaodaoda (CC BY-NC-SA 3.0), *[PC-98 Touhou] Reimu Hakurei* by
+  RouRenzu (CC BY-NC 3.0), *Hallway (day+night)* by LisadiKaprio (CC BY 4.0). Links, licences and
+  what that means for the screenshots in [CREDITS.md](CREDITS.md). Alice and Reimu belong to the
+  *Touhou Project* (Team Shanghai Alice); these are fan works used non-commercially.
+- No image in this repository or its video was generated by an AI model.

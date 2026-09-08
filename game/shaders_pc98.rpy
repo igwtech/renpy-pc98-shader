@@ -58,8 +58,10 @@ init -10 python:
     }
 
     def pc98_pal(name, i):
-        """Colour i of palette `name` as an (r, g, b) tuple in 0..1."""
-        return tuple(pc98_palettes[name][i])
+        """Colour i of palette `name` as an (r, g, b) tuple in 0..1.
+        Palettes shorter than 16 entries repeat their last colour."""
+        pal = pc98_palettes[name]
+        return tuple(pal[i] if i < len(pal) else pal[-1])
 
     class PC98PaletteFade(object):
         """ATL `function`: interpolates the DISPLAY palette registers
@@ -116,6 +118,18 @@ init -10 python:
     def pc98_siren(palette):
         """(red index, blue index) of a palette, for police-light cycling."""
         return (pc98_find_color(palette, "red"), pc98_find_color(palette, "blue"))
+
+    def pc98_sky(palette, n=3):
+        """Indices of up to n light blue / cyan registers (sky, water) for
+        colour cycling. Dark blues (a bow, a night shadow) are left alone."""
+        pal = pc98_palettes[palette]
+        def coolness(c):
+            return (c[1] + c[2]) / 2.0 - c[0]
+        cand = [i for i in range(len(pal)) if pal[i][2] > 0.55 and coolness(pal[i]) > 0.05 and (pal[i][0] + pal[i][1] + pal[i][2]) / 3.0 > 0.45]
+        cand.sort(key=lambda i: coolness(pal[i]), reverse=True)
+        if len(cand) < 2:
+            cand = sorted(range(len(pal)), key=lambda i: coolness(pal[i]), reverse=True)
+        return tuple(cand[:n])
 
     class PC98MouseLight(object):
         """ATL `function`: point light 1 follows the mouse (the layer is the
@@ -447,38 +461,38 @@ transform pc98_rgb4(dither=2, grid=(640, 360)):
 transform pc98_digital8(dither=2):
     pc98(mode=0, levels=1.0, dither=dither, spread=1.0)
 
-## Candle-lit vanity: two warm point lights on the candles, flickering.
-## Pre-quantisation light means the halo turns into dither rings.
-transform pc98_candles(palette="candles"):
-    pc98(palette=palette, ambient=(0.26, 0.24, 0.34), light1=(0.355, 0.56, 0.50), light1_color=(1.35, 0.95, 0.55), light2=(0.295, 0.68, 0.42), light2_color=(1.20, 0.85, 0.50))
+## Lamp-lit hallway: two warm point lights, flickering. Pre-quantisation light
+## means the halos turn into dither rings.
+transform pc98_lamps(palette="hallway"):
+    pc98(palette=palette, ambient=(0.22, 0.21, 0.30), light1=(0.30, 0.10, 0.60), light1_color=(1.30, 0.95, 0.55), light2=(0.78, 0.62, 0.42), light2_color=(1.10, 0.80, 0.50))
     block:
-        linear 0.09 u_light1_color (1.15, 0.80, 0.45) u_light1_pos (0.357, 0.557, 0.47) u_light2_color (1.30, 0.92, 0.55)
-        linear 0.13 u_light1_color (1.45, 1.02, 0.60) u_light1_pos (0.353, 0.562, 0.53) u_light2_color (1.05, 0.75, 0.42)
-        linear 0.07 u_light1_color (1.25, 0.88, 0.50) u_light1_pos (0.356, 0.559, 0.49) u_light2_color (1.25, 0.88, 0.52)
-        linear 0.11 u_light1_color (1.40, 0.98, 0.58) u_light1_pos (0.354, 0.561, 0.52) u_light2_color (1.12, 0.80, 0.46)
-        linear 0.10 u_light1_color (1.20, 0.84, 0.48) u_light1_pos (0.356, 0.558, 0.48) u_light2_color (1.35, 0.95, 0.56)
+        linear 0.09 u_light1_color (1.15, 0.82, 0.46) u_light1_pos (0.302, 0.098, 0.57) u_light2_color (1.20, 0.88, 0.55)
+        linear 0.13 u_light1_color (1.42, 1.02, 0.60) u_light1_pos (0.298, 0.104, 0.63) u_light2_color (0.98, 0.72, 0.44)
+        linear 0.07 u_light1_color (1.24, 0.90, 0.52) u_light1_pos (0.301, 0.101, 0.59) u_light2_color (1.14, 0.84, 0.52)
+        linear 0.11 u_light1_color (1.38, 0.98, 0.58) u_light1_pos (0.299, 0.103, 0.62) u_light2_color (1.05, 0.78, 0.47)
+        linear 0.10 u_light1_color (1.18, 0.85, 0.49) u_light1_pos (0.301, 0.099, 0.58) u_light2_color (1.22, 0.90, 0.56)
         repeat
 
 ## Night: cold ambient + a flashlight that follows the mouse.
-transform pc98_flashlight(palette="cafe", display=None, radius=0.28):
-    pc98(palette=palette, display=display, ambient=(0.22, 0.26, 0.42), light1=(0.5, 0.5, radius), light1_color=(1.15, 1.05, 0.80))
+transform pc98_flashlight(palette="hallwaydark", display=None, radius=0.28):
+    pc98(palette=palette, display=display, ambient=(0.35, 0.38, 0.55), light1=(0.5, 0.5, radius), light1_color=(1.15, 1.05, 0.80))
     function PC98MouseLight(radius)
 
 ## Hardware palette fade-in from black (display registers ramp from black
 ## to the scene palette).
-transform pc98_fade_in(palette="cafe", duration=2.0):
+transform pc98_fade_in(palette="alice", duration=2.0):
     pc98(palette=palette, display="black")
     function PC98PaletteFade("black", palette, duration)
 
 ## Palette swap day -> night, register by register.
-transform pc98_to_night(palette="cafe", duration=2.5):
+transform pc98_to_night(palette="hallway", duration=2.5):
     pc98(palette=palette)
     pause 0.8
     function PC98PaletteFade(palette, palette + "_night", duration)
 
 ## Lightning: every register slams to white for a couple of frames, decays.
-transform pc98_lightning(palette="rooftop"):
-    pc98(palette=palette, display=palette + "_night")
+transform pc98_lightning(palette="hallwaydark"):
+    pc98(palette=palette)
     block:
         pause 0.7
         u_post_tint (6.0, 6.0, 6.0)
@@ -492,6 +506,6 @@ transform pc98_lightning(palette="rooftop"):
 
 ## Palette colour cycling: rotates display registers (blinking lights). With
 ## indices=pc98_siren(palette) it swaps the red and blue registers: police lights.
-transform pc98_cycle(palette="rooftop", period=0.12, indices=None):
+transform pc98_cycle(palette="alice", period=0.12, indices=None):
     pc98(palette=palette)
     function PC98ColorCycle(palette, period, indices=indices)
