@@ -17,3 +17,4 @@ vo/full_track.wav
 poc_video_start_marker
 poc_video_cues.json
 drafts/
+__pycache__/
